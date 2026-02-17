@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whitney Spiva</title>
+<meta name="description" content="Product designer writing about design systems, conversational AI, and the small decisions that shape how people experience software.">
+<meta property="og:title" content="Whitney Spiva">
+<meta property="og:description" content="Product designer writing about design systems, conversational AI, and the small decisions that shape how people experience software.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Whitney Spiva">
+<meta name="twitter:description" content="Product designer writing about design systems, conversational AI, and the small decisions that shape how people experience software.">
+<script>
+  // Anti-FOUC: set theme before paint
+  (function(){
+    var t = localStorage.getItem('theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #fff;
+    --black: #1a1a1a;
+    --gray: #999;
+    --light: #d6d6d3;
+    --meta: #aaa;
+    --accent: #FF5500;
+    --mono: 'Space Mono', monospace;
+    --sans: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  [data-theme="dark"] {
+    --bg: #111;
+    --black: #e8e8e8;
+    --gray: #777;
+    --meta: #666;
+    --light: #333;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111;
+      --black: #e8e8e8;
+      --gray: #777;
+      --meta: #666;
+      --light: #333;
+    }
+  }
+
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: background 0.4s, color 0.4s, border-color 0.4s, box-shadow 0.4s !important;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--black);
+    font-family: var(--mono);
+    font-size: 11px;
+    -webkit-font-smoothing: antialiased;
+    cursor: crosshair;
+    overflow-x: hidden;
+  }
+
+  .dot-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, var(--light) 1px, transparent 1px);
+    opacity: 0.3;
+    background-size: 24px 24px;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  /* FULL-WIDTH NAME */
+  .name-banner {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    padding: 48px 0 0;
+    overflow: hidden;
+  }
+  .name-banner h1 {
+    font-family: var(--sans);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.04em;
+    line-height: 0.82;
+    font-size: 17.5vw;
+    white-space: nowrap;
+    text-align: center;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    animation: fadeIn 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
+
+  .letter {
+    display: inline-block;
+    animation: sweep 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .letter:nth-child(1) { animation-delay: 0.4s; }
+  .letter:nth-child(2) { animation-delay: 0.44s; }
+  .letter:nth-child(3) { animation-delay: 0.48s; }
+  .letter:nth-child(4) { animation-delay: 0.52s; }
+  .letter:nth-child(5) { animation-delay: 0.56s; }
+  .letter:nth-child(6) { animation-delay: 0.60s; }
+  .letter:nth-child(7) { animation-delay: 0.64s; }
+  @keyframes sweep {
+    0% { color: var(--black); }
+    30% { color: var(--accent); }
+    100% { color: var(--black); }
+  }
+
+  /* CONTENT */
+  .page {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 540px;
+    margin: 0 auto;
+    padding: 24px 20px 80px;
+  }
+
+  /* GRID TABLE */
+  .grid-table {
+    position: relative;
+    border: 1px solid var(--light);
+    width: 100%;
+    margin-bottom: 40px;
+  }
+
+  .grid-table .plus {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--light);
+    line-height: 1;
+    width: 11px;
+    height: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    user-select: none;
+    z-index: 2;
+    background: var(--bg);
+    transition: color 0.3s;
+  }
+
+  .grid-table > .plus-tl { top: -1px; left: -1px; transform: translate(-50%, -50%); }
+  .grid-table > .plus-tr { top: -1px; right: -1px; transform: translate(50%, -50%); }
+  .grid-table > .plus-bl { bottom: -1px; left: -1px; transform: translate(-50%, 50%); }
+  .grid-table > .plus-br { bottom: -1px; right: -1px; transform: translate(50%, 50%); }
+
+  .grid-label {
+    position: relative;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--light);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--gray);
+  }
+  .grid-label > .plus-l { bottom: -1px; left: -1px; transform: translate(-50%, 50%); }
+  .grid-label > .plus-r { bottom: -1px; right: -1px; transform: translate(50%, 50%); }
+
+  .grid-row {
+    position: relative;
+    display: block;
+    border-bottom: 1px solid var(--light);
+    padding: 18px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--black);
+    transition: background 0.2s, padding-left 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .grid-row:last-child { border-bottom: none; }
+  .grid-row:hover {
+    background: rgba(128,128,128,0.06);
+    padding-left: 20px;
+  }
+  .grid-row .row-arrow {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 14px;
+    color: var(--light);
+    opacity: 0;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .grid-row:hover .row-arrow {
+    opacity: 1;
+    color: var(--accent);
+  }
+  .grid-row:hover > .plus-l,
+  .grid-row:hover > .plus-r { color: var(--accent); }
+
+  .grid-row > .plus-l { bottom: -1px; left: -1px; transform: translate(-50%, 50%); }
+  .grid-row > .plus-r { bottom: -1px; right: -1px; transform: translate(50%, 50%); }
+
+  .post-title {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: -0.2px;
+    line-height: 1.35;
+    transition: color 0.2s;
+    margin-bottom: 6px;
+  }
+  .grid-row:hover .post-title { color: var(--gray); }
+  .post-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+    transition: color 0.2s;
+  }
+  .grid-row:hover .post-meta { color: var(--gray); }
+
+  /* ABOUT SECTION — inside grid */
+  .about-body {
+    padding: 24px 16px;
+  }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    body { cursor: default; }
+    .name-banner { padding-top: 32px; max-width: 540px; margin: 0 auto; padding-left: 16px; padding-right: 16px; }
+    .name-banner h1 { text-align: left; }
+    .page { padding: 20px 16px 60px; }
+    .grid-row { padding: 16px 14px; }
+    .post-title { font-size: 14px; padding-right: 24px; }
+    .about-text { font-size: 15px; }
+    .row-arrow { display: none !important; }
+    .grid-row:active {
+      background: rgba(128,128,128,0.06);
+    }
+    .toggle-label { display: none; }
+  }
+  .about-text {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.75;
+    color: var(--black);
+    letter-spacing: -0.1px;
+    max-width: 460px;
+  }
+  .about-text a {
+    color: var(--accent);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .about-text a::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .about-text a:hover::after { width: 100%; }
+  .about-text + .about-text { margin-top: 12px; }
+
+  /* EMAIL */
+  .contact { font-size: 12px; }
+  .contact a {
+    color: var(--gray);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .contact a::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .contact a:hover { color: var(--accent); }
+  .contact a:hover::after { width: 100%; }
+
+  /* THEME TOGGLE */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 0;
+    color: var(--gray);
+    transition: color 0.2s;
+  }
+  .theme-toggle:hover {
+    color: var(--accent);
+  }
+  .toggle-icon { font-style: normal; }
+  .toggle-label { letter-spacing: 0.5px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" aria-label="Toggle theme">
+  <span class="toggle-icon"></span>
+  <span class="toggle-label"></span>
+</button>
+<div class="dot-grid"></div>
+
+<div class="name-banner">
+  <h1><span class="letter">W</span><span class="letter">h</span><span class="letter">i</span><span class="letter">t</span><span class="letter">n</span><span class="letter">e</span><span class="letter">y</span></h1>
+</div>
+
+<div class="page">
+
+  <!-- ENTRIES -->
+  <div class="grid-table">
+    <span class="plus plus-tl">+</span>
+    <span class="plus plus-tr">+</span>
+    <span class="plus plus-bl">+</span>
+    <span class="plus plus-br">+</span>
+
+    <div class="grid-label">
+      <span class="plus plus-l">+</span>
+      <span class="plus plus-r">+</span>
+      Entries
+    </div>
+
+    <a href="entry.html" class="grid-row">
+      <span class="plus plus-l">+</span>
+      <span class="plus plus-r">+</span>
+      <span class="row-arrow">&rarr;</span>
+      <div class="post-title">What it means to design in 2026</div>
+      <div class="post-meta">Jan 2026 &middot; 8 min</div>
+    </a>
+
+    <a href="entry-02.html" class="grid-row">
+      <span class="plus plus-l">+</span>
+      <span class="plus plus-r">+</span>
+      <span class="row-arrow">&rarr;</span>
+      <div class="post-title">What happens to design systems when the code is the source of truth?</div>
+      <div class="post-meta">Jan 2026 &middot; 8 min</div>
+    </a>
+
+    <a href="entry-03.html" class="grid-row">
+      <span class="plus plus-l">+</span>
+      <span class="plus plus-r">+</span>
+      <span class="row-arrow">&rarr;</span>
+      <div class="post-title">Notes on digital archiving</div>
+      <div class="post-meta">Dec 2025 &middot; 9 min</div>
+    </a>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="grid-table" id="about">
+    <span class="plus plus-tl">+</span>
+    <span class="plus plus-tr">+</span>
+    <span class="plus plus-bl">+</span>
+    <span class="plus plus-br">+</span>
+
+    <div class="grid-label">
+      <span class="plus plus-l">+</span>
+      <span class="plus plus-r">+</span>
+      About
+    </div>
+
+    <div class="about-body">
+      <p class="about-text">I'm Whitney Spiva. I'm a product designer drawn to conversational AI, design systems, and the small decisions that shape how people experience software. I spent 8 years at The Home Depot thinking about these things. Before that, VML and Turner.</p>
+      <p class="about-text">I started this site because I wanted a place to work through ideas in the open. Some are about design, some are about everything else that feeds into it.</p>
+      <p class="about-text">Elsewhere: <a href="https://whitney.design">Portfolio</a>, <a href="https://www.linkedin.com/in/whitney-spiva/">LinkedIn</a>, <a href="https://www.are.na/at-wittyknee/channels">Are.na</a></p>
+    </div>
+  </div>
+
+  <div class="contact"><a href="#" onclick="navigator.clipboard.writeText('hello@whitney.design');this.textContent='copied!';setTimeout(()=>this.textContent='hello@whitney.design',2000);return false">hello@whitney.design</a></div>
+
+</div>
+
+<script>
+  // Theme toggle
+  const toggle = document.querySelector('.theme-toggle');
+  const label = toggle.querySelector('.toggle-label');
+  const icon = toggle.querySelector('.toggle-icon');
+  function updateToggleLabel() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    label.textContent = isDark ? 'light' : 'dark';
+    icon.textContent = isDark ? '☀' : '☾';
+  }
+  updateToggleLabel();
+  toggle.addEventListener('click', () => {
+    document.documentElement.classList.add('theme-transitioning');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateToggleLabel();
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 500);
+  });
+
+  // Dot grid parallax
+  const grid = document.querySelector('.dot-grid');
+  let ticking = false;
+  document.addEventListener('mousemove', (e) => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 12;
+        const y = (e.clientY / window.innerHeight - 0.5) * 12;
+        grid.style.transform = `translate(${x}px, ${y}px)`;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+</script>
+</body>
+</html>

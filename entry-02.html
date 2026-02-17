@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What happens to design systems when the code is the source of truth? — Whitney Spiva</title>
+<meta name="description" content="Figma libraries get stale. What if the design system lived in the codebase instead?">
+<meta property="og:title" content="What happens to design systems when the code is the source of truth?">
+<meta property="og:description" content="Figma libraries get stale. What if the design system lived in the codebase instead?">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Whitney Spiva">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="What happens to design systems when the code is the source of truth?">
+<meta name="twitter:description" content="Figma libraries get stale. What if the design system lived in the codebase instead?">
+<script>
+  (function(){
+    var t = localStorage.getItem('theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #fff;
+    --bg-rgb: 255, 255, 255;
+    --black: #1a1a1a;
+    --gray: #999;
+    --meta: #aaa;
+    --light: #d6d6d3;
+    --accent: #FF5500;
+    --mono: 'Space Mono', monospace;
+    --sans: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  [data-theme="dark"] {
+    --bg: #111;
+    --bg-rgb: 17, 17, 17;
+    --black: #e8e8e8;
+    --gray: #777;
+    --meta: #666;
+    --light: #333;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111;
+      --bg-rgb: 17, 17, 17;
+      --black: #e8e8e8;
+      --gray: #777;
+      --meta: #666;
+      --light: #333;
+    }
+  }
+
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: background 0.4s, color 0.4s, border-color 0.4s, box-shadow 0.4s !important;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--black);
+    font-family: var(--mono);
+    font-size: 11px;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .dot-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, var(--light) 1px, transparent 1px);
+    opacity: 0.3;
+    background-size: 24px 24px;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background: var(--accent);
+    z-index: 11;
+    transition: width 0.1s linear;
+  }
+
+  /* TOP BAR */
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9;
+    height: 52px;
+    background: rgba(var(--bg-rgb), 0.8);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .top-bar.visible {
+    opacity: 1;
+  }
+  .top-player {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+  }
+  .top-player.active {
+    display: flex;
+  }
+  .top-player-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--meta);
+    transition: color 0.2s;
+  }
+  .top-player-btn:hover { color: var(--accent); }
+  .top-player-btn svg {
+    width: 8px;
+    height: 8px;
+    fill: currentColor;
+  }
+  .top-player-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .top-player-time, .top-player-total {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+  }
+  .top-player-sep, .top-controls-divider {
+    color: var(--light);
+    font-size: 10px;
+    user-select: none;
+  }
+  .top-ctrl-btn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .top-ctrl-btn:hover { color: var(--accent); }
+  .top-ctrl-btn svg { stroke: currentColor; }
+  .top-speed-btn {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: color 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .top-speed-btn:hover { color: var(--accent); }
+  .top-speed-btn.active {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* NAV */
+  .nav {
+    position: fixed;
+    top: 16px;
+    left: 20px;
+    z-index: 10;
+  }
+  .nav a {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav a:hover {
+    color: var(--accent);
+  }
+
+  /* PAGE */
+  .page {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 80px 32px 80px;
+  }
+
+  /* ARTICLE HEADER */
+  .article-header {
+    padding: 0 0 24px;
+  }
+  .article-title {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .article-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--gray);
+    margin-bottom: 16px;
+  }
+  .article-excerpt {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--gray);
+    margin-bottom: 16px;
+  }
+  .article-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+    min-height: 20px;
+  }
+  .meta-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .listen-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .listen-btn:hover { color: var(--accent); }
+  .listen-btn svg {
+    width: 8px;
+    height: 8px;
+    fill: currentColor;
+  }
+  .meta-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  /* INLINE PLAYER CONTROLS */
+  .inline-controls {
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  .inline-controls.active {
+    display: flex;
+  }
+  .ctrl-btn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .ctrl-btn:hover { color: var(--accent); }
+  .ctrl-btn svg { stroke: currentColor; }
+  .controls-divider {
+    color: var(--light);
+    font-size: 10px;
+    user-select: none;
+  }
+  .speed-btn {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: color 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .speed-btn:hover { color: var(--accent); }
+  .speed-btn.active {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .player-elapsed, .player-total {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+  }
+  .player-sep { color: var(--light); font-size: 10px; }
+  .speed-cycle {
+    display: none;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--black);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px 4px;
+    letter-spacing: 0.5px;
+  }
+  .top-cycle-divider {
+    display: none;
+    color: var(--light);
+    font-size: 10px;
+    user-select: none;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .copy-btn:hover { color: var(--accent); }
+  .copy-btn svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+  }
+
+  /* DIVIDER WITH PLUS MARKS */
+  .divider {
+    position: relative;
+    border: none;
+    border-top: 1px solid var(--light);
+    margin: 0;
+  }
+  .divider .plus {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--light);
+    line-height: 1;
+    width: 11px;
+    height: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    user-select: none;
+    background: var(--bg);
+    top: -1px;
+  }
+  .divider .plus-l { left: -1px; transform: translate(-50%, -50%); }
+  .divider .plus-r { right: -1px; transform: translate(50%, -50%); }
+
+  /* ARTICLE BODY */
+  .article-body {
+    padding: 32px 0;
+  }
+  .article-body p {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.75;
+    color: var(--black);
+    letter-spacing: -0.1px;
+    margin-bottom: 24px;
+  }
+  .article-body p:last-child { margin-bottom: 0; }
+
+  .article-body h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--gray);
+    margin-bottom: 20px;
+  }
+
+
+
+
+  .article-body .standalone {
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--black);
+    margin: 32px 0;
+  }
+
+  .article-body strong {
+    font-weight: 600;
+  }
+  .article-body a {
+    color: var(--accent);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .article-body a::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .article-body a:hover { color: var(--accent); }
+  .article-body a:hover::after { width: 100%; }
+
+  .article-body mark {
+    background: transparent;
+    color: inherit;
+    background-image: linear-gradient(104deg, transparent 0.9%, rgba(255, 85, 0, 0.1) 2.4%, rgba(255, 85, 0, 0.08) 97%, transparent 98.5%);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    padding: 0.12em 0.2em;
+    border-radius: 2px;
+  }
+  [data-theme="dark"] .article-body mark {
+    background-image: linear-gradient(104deg, transparent 0.9%, rgba(255, 85, 0, 0.14) 2.4%, rgba(255, 85, 0, 0.1) 97%, transparent 98.5%);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .article-body mark {
+      background-image: linear-gradient(104deg, transparent 0.9%, rgba(255, 85, 0, 0.14) 2.4%, rgba(255, 85, 0, 0.1) 97%, transparent 98.5%);
+    }
+  }
+
+  /* FOOTER NAV */
+  .entry-footer {
+    padding: 24px 0;
+    margin-top: 24px;
+    border-top: 1px solid var(--light);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .entry-footer a {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--gray);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .entry-footer a:hover { color: var(--accent); }
+  .footer-arrow { font-size: 12px; display: inline-block; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+  .footer-prev:hover .footer-arrow { transform: translateX(-4px); }
+  .footer-next:hover .footer-arrow { transform: translateX(4px); }
+  .footer-title {
+    display: block;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: -0.1px;
+    color: var(--meta);
+    margin-top: 6px;
+    transition: color 0.2s;
+  }
+  .entry-footer a:hover .footer-title { color: var(--accent); }
+  .footer-next { text-align: right; }
+
+  /* THEME TOGGLE */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 0;
+    color: var(--gray);
+    transition: color 0.2s;
+  }
+  .theme-toggle:hover {
+    color: var(--accent);
+  }
+  .toggle-icon { font-style: normal; }
+  .toggle-label { letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* SCROLL REVEAL */
+  .article-body > * {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .article-body > .visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+
+  /* STICKY SECTION HEADERS */
+  .article-body h2 {
+    position: sticky;
+    top: 6px;
+    background: var(--bg);
+    margin-top: 0;
+    padding-top: 48px;
+    padding-bottom: 8px;
+    z-index: 2;
+  }
+
+  /* BACK TO TOP */
+  .back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--meta);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s, color 0.2s;
+    z-index: 10;
+    padding: 0;
+  }
+  .back-to-top.visible { opacity: 1; }
+  .back-to-top:hover { color: var(--accent); }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    body { cursor: default; }
+    .nav { left: 32px; }
+    .theme-toggle { right: 32px; }
+    .page { padding: 64px 32px 60px; }
+    .article-title { font-size: 22px; }
+    .article-excerpt { font-size: 14px; }
+    .article-body p { font-size: 15px; }
+    .toggle-label { display: none; }
+
+    /* Simplified top bar on mobile */
+    #topSkipBack, #topSkipFwd,
+    .top-speed-btn { display: none !important; }
+    .top-controls-divider { display: none !important; }
+    .top-speed-cycle.speed-cycle { display: inline !important; }
+    .top-cycle-divider { display: inline !important; }
+
+    /* Hide individual speed buttons, show cycle button */
+    .speed-btn { display: none; }
+    .speed-cycle { display: inline; }
+
+    /* Mobile meta: always stacked, left-aligned */
+    .article-meta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .meta-right {
+      order: -1;
+    }
+    .article-meta .meta-left {
+      gap: 10px;
+    }
+    .article-meta .inline-controls.active {
+      margin-top: 0;
+    }
+    .article-body p { line-height: 1.85; }
+    .article-body a::after { width: 100%; background: rgba(255, 85, 0, 0.25); }
+    .article-body a:active::after { background: var(--accent); }
+    .footer-prev:active .footer-arrow { transform: translateX(-4px); }
+    .footer-next:active .footer-arrow { transform: translateX(4px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar"></div>
+<div class="top-bar">
+  <div class="top-player" id="topPlayer">
+    <button class="top-player-btn" id="topPauseBtn">
+      <svg viewBox="0 0 10 10"><rect x="1" y="0" width="3" height="10"/><rect x="6" y="0" width="3" height="10"/></svg>
+      <span class="top-player-label" id="topPlayerLabel">Pause</span>
+    </button>
+    <span class="top-player-time" id="topPlayerTime">0:00</span>
+    <span class="top-player-sep">/</span>
+    <span class="top-player-total">8:34</span>
+    <span class="top-controls-divider">|</span>
+    <button class="top-ctrl-btn" id="topSkipBack">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg><span>10</span>
+    </button>
+    <button class="top-ctrl-btn" id="topSkipFwd">
+      <span>10</span><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+    </button>
+    <span class="top-controls-divider">|</span>
+    <button class="top-speed-btn" data-speed="0.5">0.5x</button>
+    <button class="top-speed-btn active" data-speed="1">1x</button>
+    <button class="top-speed-btn" data-speed="1.5">1.5x</button>
+    <button class="top-speed-btn" data-speed="2">2x</button>
+    <span class="top-cycle-divider">|</span>
+    <button class="speed-cycle top-speed-cycle" id="topSpeedCycle">1x</button>
+  </div>
+</div>
+<button class="theme-toggle" aria-label="Toggle theme">
+  <span class="toggle-icon"></span>
+  <span class="toggle-label"></span>
+</button>
+<div class="dot-grid"></div>
+<button class="back-to-top" id="backToTop">&uarr; Top</button>
+
+<div class="nav">
+  <a href="blog-minimal.html">&larr; back</a>
+</div>
+
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="article-header">
+      <div class="article-label">Entry #02</div>
+      <h1 class="article-title">What happens to design systems when the code is the source of truth?</h1>
+      <p class="article-excerpt">Figma libraries get stale. What if the design system lived in the codebase instead?</p>
+      <div class="article-meta">
+        <div class="meta-left">
+          <span class="read-time" id="readTime">8 min read</span>
+          <button class="listen-btn" id="listenBtn">
+            <svg viewBox="0 0 10 10" class="listen-svg"><polygon points="2,0 10,5 2,10"/></svg>
+            <span class="listen-label" id="listenLabel">Listen to entry</span>
+          </button>
+          <div class="inline-controls" id="inlineControls">
+            <span class="player-elapsed" id="playerElapsed">0:00</span>
+            <span class="player-sep">/</span>
+            <span class="player-total" id="playerTotal">8:34</span>
+            <span class="controls-divider">|</span>
+            <button class="ctrl-btn" id="skipBack" title="Back 10s">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg><span>10</span>
+            </button>
+            <button class="ctrl-btn" id="skipFwd" title="Forward 10s">
+              <span>10</span><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+            </button>
+            <span class="controls-divider">|</span>
+            <button class="speed-btn" data-speed="0.5">0.5x</button>
+            <button class="speed-btn active" data-speed="1">1x</button>
+            <button class="speed-btn" data-speed="1.5">1.5x</button>
+            <button class="speed-btn" data-speed="2">2x</button>
+            <button class="speed-cycle" id="speedCycle">1x</button>
+          </div>
+        </div>
+        <div class="meta-right">
+          <span>Jan 2026</span>
+          <button class="copy-btn" id="copyBtn">
+            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="copy-label">Copy URL</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"><span class="plus plus-l">+</span><span class="plus plus-r">+</span></div>
+
+    <!-- BODY -->
+    <div class="article-body">
+      <p>Every design system I've worked on has had the same problem: the Figma library says one thing and the codebase says another. Components drift. Tokens get updated in one place and not the other. Someone builds a variant in code that never makes it back to the design file. After a few months, the "source of truth" is whichever one someone checked last.</p>
+
+      <p>I've been thinking about what would change if we just accepted that the code is the real design system. Not the Figma file, not the documentation site. The code.</p>
+
+      <h2>Where the drift starts</h2>
+
+      <p>The traditional model is: design in Figma, document the spec, hand it to engineering, they build it, and the Figma file becomes the reference. This works until the first time an engineer has to make a judgment call the spec didn't cover. They adjust the padding, tweak a color, add a loading state the designer didn't think about. The code diverges from the design.</p>
+
+      <p class="standalone">And it keeps diverging.</p>
+
+      <p>The response is usually "we need better handoff" or "we need to keep Figma updated." But what if the problem isn't discipline? What if it's that <mark>we're maintaining two sources of truth and expecting them to stay in sync</mark>?</p>
+
+      <h2>Code as the living system</h2>
+
+      <p>What if designers worked directly in the component library? Not writing CSS from scratch, but using AI-assisted tools to modify, extend, and compose components in the same environment engineers use. <mark>The component you see is the component that ships.</mark> There's no translation step. There's no drift.</p>
+
+      <p>This isn't hypothetical anymore. Tools are emerging that let designers work with code in ways that weren't possible a year ago. The gap between "designing a button" and "building a button" is collapsing. The question is what that means for how teams organize around a shared system.</p>
+
+
+      <h2>The enterprise question</h2>
+
+      <p>At a small company, one team owns the system and everyone's close enough to stay coordinated. At enterprise scale, you might have ten teams consuming the same component library across different products. How does a code-first design system work when the people using it are spread across organizations, time zones, and priorities?</p>
+
+      <p>I don't have the full answer yet. But I think it involves treating the design system repository the way open-source projects treat their codebases: contribution guidelines, pull request reviews, release notes, and a small core team that maintains quality while staying open to input from the edges.</p>
+
+      <p>Maybe the design system of the future looks less like a Figma library and more like a well-maintained open-source project. We're not there yet. But I think we're closer than most people realize.</p>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="entry-footer">
+      <a href="entry.html" class="footer-prev"><span class="footer-arrow">&larr;</span> Previous<span class="footer-title">What it means to design in 2026</span></a>
+      <a href="entry-03.html" class="footer-next">Next <span class="footer-arrow">&rarr;</span><span class="footer-title">Notes on digital archiving</span></a>
+    </div>
+
+</div>
+
+<script>
+  // Theme toggle
+  const toggle = document.querySelector('.theme-toggle');
+  const label = toggle.querySelector('.toggle-label');
+  const icon = toggle.querySelector('.toggle-icon');
+  function updateToggleLabel() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    label.textContent = isDark ? 'light' : 'dark';
+    icon.textContent = isDark ? '☀' : '☾';
+  }
+  updateToggleLabel();
+  toggle.addEventListener('click', () => {
+    document.documentElement.classList.add('theme-transitioning');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateToggleLabel();
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 500);
+  });
+
+  // Listen / Player
+  const listenBtn = document.getElementById('listenBtn');
+  const listenLabel = document.getElementById('listenLabel');
+  const listenSvg = listenBtn.querySelector('.listen-svg');
+  const topPlayer = document.getElementById('topPlayer');
+  const topPauseBtn = document.getElementById('topPauseBtn');
+  const topPlayerLabel = document.getElementById('topPlayerLabel');
+  const topPlayerTime = document.getElementById('topPlayerTime');
+  const topSkipBack = document.getElementById('topSkipBack');
+  const topSkipFwd = document.getElementById('topSkipFwd');
+  const topSpeedBtns = document.querySelectorAll('.top-speed-btn');
+  const inlineControls = document.getElementById('inlineControls');
+  const playerElapsed = document.getElementById('playerElapsed');
+  const readTime = document.getElementById('readTime');
+  const skipBack = document.getElementById('skipBack');
+  const skipFwd = document.getElementById('skipFwd');
+  const speedBtns = document.querySelectorAll('.speed-btn');
+  let playing = false;
+  let started = false;
+  let elapsed = 0;
+  let duration = 8 * 60 + 34;
+  let speed = 1;
+  let interval;
+
+  const pauseSvg = '<rect x="1" y="0" width="3" height="10"/><rect x="6" y="0" width="3" height="10"/>';
+  const playSvg = '<polygon points="2,0 10,5 2,10"/>';
+
+  function formatTime(s) {
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function updateUI() {
+    const icon = playing ? pauseSvg : playSvg;
+    const label = playing ? 'Pause' : 'Play';
+    listenSvg.innerHTML = icon;
+    topPauseBtn.querySelector('svg').innerHTML = icon;
+    topPlayerLabel.textContent = label;
+    const t = formatTime(elapsed);
+    playerElapsed.textContent = t;
+    topPlayerTime.textContent = t;
+    if (playing) {
+      listenLabel.textContent = 'Pause';
+      readTime.style.display = 'none';
+      inlineControls.classList.add('active');
+      topPlayer.classList.add('active');
+    } else if (started) {
+      listenLabel.textContent = 'Play';
+      readTime.style.display = 'none';
+      inlineControls.classList.add('active');
+      topPlayer.classList.add('active');
+    } else {
+      listenLabel.textContent = 'Listen to entry';
+      readTime.style.display = '';
+      inlineControls.classList.remove('active');
+      topPlayer.classList.remove('active');
+    }
+  }
+
+  function startInterval() {
+    clearInterval(interval);
+    interval = setInterval(() => {
+      elapsed += speed;
+      if (elapsed >= duration) {
+        elapsed = 0;
+        playing = false;
+        started = false;
+        clearInterval(interval);
+      }
+      updateUI();
+    }, 1000);
+  }
+
+  function togglePlay() {
+    if (playing) {
+      clearInterval(interval);
+      playing = false;
+    } else {
+      playing = true;
+      started = true;
+      startInterval();
+    }
+    updateUI();
+  }
+
+  listenBtn.addEventListener('click', togglePlay);
+  topPauseBtn.addEventListener('click', togglePlay);
+
+  skipBack.addEventListener('click', () => {
+    elapsed = Math.max(0, elapsed - 10);
+    updateUI();
+  });
+
+  skipFwd.addEventListener('click', () => {
+    elapsed = Math.min(duration, elapsed + 10);
+    updateUI();
+  });
+
+  function setSpeed(s) {
+    speed = s;
+    speedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === s));
+    topSpeedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === s));
+    document.getElementById('speedCycle').textContent = s + 'x';
+    document.getElementById('topSpeedCycle').textContent = s + 'x';
+    if (playing) startInterval();
+  }
+
+  speedBtns.forEach(btn => {
+    btn.addEventListener('click', () => setSpeed(parseFloat(btn.dataset.speed)));
+  });
+  topSpeedBtns.forEach(btn => {
+    btn.addEventListener('click', () => setSpeed(parseFloat(btn.dataset.speed)));
+  });
+
+  // Speed cycle buttons (mobile)
+  const speedCycle = document.getElementById('speedCycle');
+  const topSpeedCycle = document.getElementById('topSpeedCycle');
+  const speedOrder = [1, 1.5, 2, 0.5];
+  function cycleSpeed() {
+    const idx = speedOrder.indexOf(speed);
+    const next = speedOrder[(idx + 1) % speedOrder.length];
+    setSpeed(next);
+    speedCycle.textContent = next + 'x';
+    topSpeedCycle.textContent = next + 'x';
+  }
+  speedCycle.addEventListener('click', cycleSpeed);
+  topSpeedCycle.addEventListener('click', cycleSpeed);
+
+  topSkipBack.addEventListener('click', () => {
+    elapsed = Math.max(0, elapsed - 10);
+    updateUI();
+  });
+  topSkipFwd.addEventListener('click', () => {
+    elapsed = Math.min(duration, elapsed + 10);
+    updateUI();
+  });
+
+  // Copy URL button
+  const copyBtn = document.getElementById('copyBtn');
+  const copyLabel = copyBtn.querySelector('.copy-label');
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(window.location.href);
+    copyLabel.textContent = 'Copied!';
+    setTimeout(() => copyLabel.textContent = 'Copy URL', 2000);
+  });
+
+  // Top bar fade on scroll + progress bar
+  const topBar = document.querySelector('.top-bar');
+  const progressBar = document.querySelector('.progress-bar');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 80) {
+      topBar.classList.add('visible');
+    } else {
+      topBar.classList.remove('visible');
+    }
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = (window.scrollY / docHeight) * 100;
+    progressBar.style.width = progress + '%';
+  });
+
+  // Dot grid parallax
+  const grid = document.querySelector('.dot-grid');
+  let ticking = false;
+  document.addEventListener('mousemove', (e) => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 12;
+        const y = (e.clientY / window.innerHeight - 0.5) * 12;
+        grid.style.transform = `translate(${x}px, ${y}px)`;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+
+  // Scroll reveal
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.article-body > *').forEach(el => revealObserver.observe(el));
+
+  // Keyboard nav between entries
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    var prev = document.querySelector('.footer-prev');
+    var next = document.querySelector('.footer-next');
+    if (e.key === 'ArrowLeft' && prev) window.location.href = prev.href;
+    if (e.key === 'ArrowRight' && next) window.location.href = next.href;
+  });
+
+  // Back to top
+  var backToTop = document.getElementById('backToTop');
+  backToTop.addEventListener('click', function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  window.addEventListener('scroll', function() {
+    if (window.scrollY < 200) {
+      backToTop.classList.remove('visible');
+    } else {
+      backToTop.classList.add('visible');
+    }
+  });
+</script>
+</body>
+</html>

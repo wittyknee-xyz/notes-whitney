@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes on digital archiving — Whitney Spiva</title>
+<meta name="description" content="What if an agent could help you make sense of everything you've saved?">
+<meta property="og:title" content="Notes on digital archiving">
+<meta property="og:description" content="What if an agent could help you make sense of everything you've saved?">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Whitney Spiva">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Notes on digital archiving">
+<meta name="twitter:description" content="What if an agent could help you make sense of everything you've saved?">
+<script>
+  (function(){
+    var t = localStorage.getItem('theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+    else document.documentElement.setAttribute('data-theme', 'light');
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #fff;
+    --bg-rgb: 255, 255, 255;
+    --black: #1a1a1a;
+    --gray: #999;
+    --meta: #aaa;
+    --light: #d6d6d3;
+    --accent: #FF5500;
+    --mono: 'Space Mono', monospace;
+    --sans: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  [data-theme="dark"] {
+    --bg: #111;
+    --bg-rgb: 17, 17, 17;
+    --black: #e8e8e8;
+    --gray: #777;
+    --meta: #666;
+    --light: #333;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111;
+      --bg-rgb: 17, 17, 17;
+      --black: #e8e8e8;
+      --gray: #777;
+      --meta: #666;
+      --light: #333;
+    }
+  }
+
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: background 0.4s, color 0.4s, border-color 0.4s, box-shadow 0.4s !important;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--black);
+    font-family: var(--mono);
+    font-size: 11px;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .dot-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: radial-gradient(circle, var(--light) 1px, transparent 1px);
+    opacity: 0.3;
+    background-size: 24px 24px;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 0%;
+    background: var(--accent);
+    z-index: 11;
+    transition: width 0.1s linear;
+  }
+
+  /* TOP BAR */
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9;
+    height: 52px;
+    background: rgba(var(--bg-rgb), 0.8);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .top-bar.visible {
+    opacity: 1;
+  }
+  .top-player {
+    display: none;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    align-items: center;
+    gap: 10px;
+    pointer-events: auto;
+  }
+  .top-player.active {
+    display: flex;
+  }
+  .top-player-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--meta);
+    transition: color 0.2s;
+  }
+  .top-player-btn:hover { color: var(--accent); }
+  .top-player-btn svg {
+    width: 8px;
+    height: 8px;
+    fill: currentColor;
+  }
+  .top-player-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+  .top-player-time, .top-player-total {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+  }
+  .top-player-sep, .top-controls-divider {
+    color: var(--light);
+    font-size: 10px;
+    user-select: none;
+  }
+  .top-ctrl-btn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .top-ctrl-btn:hover { color: var(--accent); }
+  .top-ctrl-btn svg { stroke: currentColor; }
+  .top-speed-btn {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: color 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .top-speed-btn:hover { color: var(--accent); }
+  .top-speed-btn.active {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* NAV */
+  .nav {
+    position: fixed;
+    top: 16px;
+    left: 20px;
+    z-index: 10;
+  }
+  .nav a {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray);
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .nav a:hover {
+    color: var(--accent);
+  }
+
+  /* PAGE */
+  .page {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 80px 32px 80px;
+  }
+
+  /* ARTICLE HEADER */
+  .article-header {
+    padding: 0 0 24px;
+  }
+  .article-title {
+    font-family: var(--sans);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .article-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--gray);
+    margin-bottom: 16px;
+  }
+  .article-excerpt {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--gray);
+    margin-bottom: 16px;
+  }
+  .article-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+    min-height: 20px;
+  }
+  .meta-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .listen-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .listen-btn:hover { color: var(--accent); }
+  .listen-btn svg {
+    width: 8px;
+    height: 8px;
+    fill: currentColor;
+  }
+  .meta-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  /* INLINE PLAYER CONTROLS */
+  .inline-controls {
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  .inline-controls.active {
+    display: flex;
+  }
+  .ctrl-btn {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .ctrl-btn:hover { color: var(--accent); }
+  .ctrl-btn svg { stroke: currentColor; }
+  .controls-divider {
+    color: var(--light);
+    font-size: 10px;
+    user-select: none;
+  }
+  .speed-btn {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 2px 4px;
+    transition: color 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .speed-btn:hover { color: var(--accent); }
+  .speed-btn.active {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .player-elapsed, .player-total {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--meta);
+    letter-spacing: 1px;
+  }
+  .player-sep { color: var(--light); font-size: 10px; }
+  .speed-cycle {
+    display: none;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--black);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 2px 4px;
+    letter-spacing: 0.5px;
+  }
+  .top-cycle-divider {
+    display: none;
+    color: var(--light);
+    font-size: 10px;
+    user-select: none;
+  }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    color: var(--meta);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .copy-btn:hover { color: var(--accent); }
+  .copy-btn svg {
+    width: 12px;
+    height: 12px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.5;
+  }
+
+  /* DIVIDER WITH PLUS MARKS */
+  .divider {
+    position: relative;
+    border: none;
+    border-top: 1px solid var(--light);
+    margin: 0;
+  }
+  .divider .plus {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--light);
+    line-height: 1;
+    width: 11px;
+    height: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    user-select: none;
+    background: var(--bg);
+    top: -1px;
+  }
+  .divider .plus-l { left: -1px; transform: translate(-50%, -50%); }
+  .divider .plus-r { right: -1px; transform: translate(50%, -50%); }
+
+  /* ARTICLE BODY */
+  .article-body {
+    padding: 32px 0;
+  }
+  .article-body p {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.75;
+    color: var(--black);
+    letter-spacing: -0.1px;
+    margin-bottom: 24px;
+  }
+  .article-body p:last-child { margin-bottom: 0; }
+
+  .article-body h2 {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--gray);
+    margin-bottom: 20px;
+  }
+
+
+  .article-body ul {
+    list-style: none;
+    margin: 24px 0;
+    padding: 0;
+  }
+  .article-body ul li {
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.75;
+    color: var(--black);
+    padding-left: 20px;
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .article-body ul li::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 10px;
+    width: 5px;
+    height: 5px;
+    background: var(--light);
+  }
+
+  .article-body .standalone {
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--black);
+    margin: 32px 0;
+  }
+
+  .article-body .prompt {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--gray);
+    padding: 10px 0 10px 20px;
+    border-left: 1px solid var(--light);
+    margin: 8px 0;
+    letter-spacing: 0.5px;
+  }
+  .article-body .prompt::before {
+    content: '> ';
+    color: var(--light);
+  }
+
+  .article-body strong {
+    font-weight: 600;
+  }
+
+  .article-body a {
+    color: var(--accent);
+    text-decoration: none;
+    position: relative;
+    transition: color 0.2s;
+  }
+  .article-body a::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--accent);
+    transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .article-body a:hover { color: var(--accent); }
+  .article-body a:hover::after { width: 100%; }
+
+  .article-body mark {
+    background: transparent;
+    color: inherit;
+    background-image: linear-gradient(104deg, transparent 0.9%, rgba(255, 85, 0, 0.1) 2.4%, rgba(255, 85, 0, 0.08) 97%, transparent 98.5%);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    padding: 0.12em 0.2em;
+    border-radius: 2px;
+  }
+  [data-theme="dark"] .article-body mark {
+    background-image: linear-gradient(104deg, transparent 0.9%, rgba(255, 85, 0, 0.14) 2.4%, rgba(255, 85, 0, 0.1) 97%, transparent 98.5%);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .article-body mark {
+      background-image: linear-gradient(104deg, transparent 0.9%, rgba(255, 85, 0, 0.14) 2.4%, rgba(255, 85, 0, 0.1) 97%, transparent 98.5%);
+    }
+  }
+
+  /* FOOTER NAV */
+  .entry-footer {
+    padding: 24px 0;
+    margin-top: 24px;
+    border-top: 1px solid var(--light);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .entry-footer a {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--gray);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .entry-footer a:hover { color: var(--accent); }
+  .footer-arrow { font-size: 12px; display: inline-block; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+  .footer-prev:hover .footer-arrow { transform: translateX(-4px); }
+  .footer-next:hover .footer-arrow { transform: translateX(4px); }
+  .footer-title {
+    display: block;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: -0.1px;
+    color: var(--meta);
+    margin-top: 6px;
+    transition: color 0.2s;
+  }
+  .entry-footer a:hover .footer-title { color: var(--accent); }
+  .footer-next { text-align: right; }
+
+  /* THEME TOGGLE */
+  .theme-toggle {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 0;
+    color: var(--gray);
+    transition: color 0.2s;
+  }
+  .theme-toggle:hover {
+    color: var(--accent);
+  }
+  .toggle-icon { font-style: normal; }
+  .toggle-label { letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* SCROLL REVEAL */
+  .article-body > * {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .article-body > .visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+
+  /* STICKY SECTION HEADERS */
+  .article-body h2 {
+    position: sticky;
+    top: 6px;
+    background: var(--bg);
+    margin-top: 0;
+    padding-top: 48px;
+    padding-bottom: 8px;
+    z-index: 2;
+  }
+
+  /* BACK TO TOP */
+  .back-to-top {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--meta);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.3s, color 0.2s;
+    z-index: 10;
+    padding: 0;
+  }
+  .back-to-top.visible { opacity: 1; }
+  .back-to-top:hover { color: var(--accent); }
+
+  /* MOBILE */
+  @media (max-width: 600px) {
+    body { cursor: default; }
+    .nav { left: 32px; }
+    .theme-toggle { right: 32px; }
+    .page { padding: 64px 32px 60px; }
+    .article-title { font-size: 22px; }
+    .article-excerpt { font-size: 14px; }
+    .article-body p { font-size: 15px; }
+    .toggle-label { display: none; }
+
+    /* Simplified top bar on mobile */
+    #topSkipBack, #topSkipFwd,
+    .top-speed-btn { display: none !important; }
+    .top-controls-divider { display: none !important; }
+    .top-speed-cycle.speed-cycle { display: inline !important; }
+    .top-cycle-divider { display: inline !important; }
+
+    /* Hide individual speed buttons, show cycle button */
+    .speed-btn { display: none; }
+    .speed-cycle { display: inline; }
+
+    /* Mobile meta: always stacked, left-aligned */
+    .article-meta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .meta-right {
+      order: -1;
+    }
+    .article-meta .meta-left {
+      gap: 10px;
+    }
+    .article-meta .inline-controls.active {
+      margin-top: 0;
+    }
+    .article-body p { line-height: 1.85; }
+    .article-body a::after { width: 100%; background: rgba(255, 85, 0, 0.25); }
+    .article-body a:active::after { background: var(--accent); }
+    .footer-prev:active .footer-arrow { transform: translateX(-4px); }
+    .footer-next:active .footer-arrow { transform: translateX(4px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar"></div>
+<div class="top-bar">
+  <div class="top-player" id="topPlayer">
+    <button class="top-player-btn" id="topPauseBtn">
+      <svg viewBox="0 0 10 10"><rect x="1" y="0" width="3" height="10"/><rect x="6" y="0" width="3" height="10"/></svg>
+      <span class="top-player-label" id="topPlayerLabel">Pause</span>
+    </button>
+    <span class="top-player-time" id="topPlayerTime">0:00</span>
+    <span class="top-player-sep">/</span>
+    <span class="top-player-total">9:24</span>
+    <span class="top-controls-divider">|</span>
+    <button class="top-ctrl-btn" id="topSkipBack">
+      <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg><span>10</span>
+    </button>
+    <button class="top-ctrl-btn" id="topSkipFwd">
+      <span>10</span><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+    </button>
+    <span class="top-controls-divider">|</span>
+    <button class="top-speed-btn" data-speed="0.5">0.5x</button>
+    <button class="top-speed-btn active" data-speed="1">1x</button>
+    <button class="top-speed-btn" data-speed="1.5">1.5x</button>
+    <button class="top-speed-btn" data-speed="2">2x</button>
+    <span class="top-cycle-divider">|</span>
+    <button class="speed-cycle top-speed-cycle" id="topSpeedCycle">1x</button>
+  </div>
+</div>
+<button class="theme-toggle" aria-label="Toggle theme">
+  <span class="toggle-icon"></span>
+  <span class="toggle-label"></span>
+</button>
+<div class="dot-grid"></div>
+<button class="back-to-top" id="backToTop">&uarr; Top</button>
+
+<div class="nav">
+  <a href="blog-minimal.html">&larr; back</a>
+</div>
+
+<div class="page">
+
+    <!-- HEADER -->
+    <div class="article-header">
+      <div class="article-label">Entry #03</div>
+      <h1 class="article-title">Notes on digital archiving</h1>
+      <p class="article-excerpt">Ten years of files, bookmarks, and half-finished ideas. What would it take to actually make sense of them?</p>
+      <div class="article-meta">
+        <div class="meta-left">
+          <span class="read-time" id="readTime">9 min read</span>
+          <button class="listen-btn" id="listenBtn">
+            <svg viewBox="0 0 10 10" class="listen-svg"><polygon points="2,0 10,5 2,10"/></svg>
+            <span class="listen-label" id="listenLabel">Listen to entry</span>
+          </button>
+          <div class="inline-controls" id="inlineControls">
+            <span class="player-elapsed" id="playerElapsed">0:00</span>
+            <span class="player-sep">/</span>
+            <span class="player-total" id="playerTotal">9:24</span>
+            <span class="controls-divider">|</span>
+            <button class="ctrl-btn" id="skipBack" title="Back 10s">
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg><span>10</span>
+            </button>
+            <button class="ctrl-btn" id="skipFwd" title="Forward 10s">
+              <span>10</span><svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+            </button>
+            <span class="controls-divider">|</span>
+            <button class="speed-btn" data-speed="0.5">0.5x</button>
+            <button class="speed-btn active" data-speed="1">1x</button>
+            <button class="speed-btn" data-speed="1.5">1.5x</button>
+            <button class="speed-btn" data-speed="2">2x</button>
+            <button class="speed-cycle" id="speedCycle">1x</button>
+          </div>
+        </div>
+        <div class="meta-right">
+          <span>Dec 2025</span>
+          <button class="copy-btn" id="copyBtn">
+            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><span class="copy-label">Copy URL</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"><span class="plus plus-l">+</span><span class="plus plus-r">+</span></div>
+
+    <!-- BODY -->
+    <div class="article-body">
+      <p>I have ten years of screenshots, bookmarks, saved articles, Slack exports, project files, and notes scattered across drives, apps, and cloud services I've forgotten the passwords to. Most of it is inaccessible. Not because it's lost, but because there's too much of it to find anything.</p>
+
+      <p>Lately I've been down a rabbit hole trying to figure out what it would actually take to make sense of all of it. Not just store it better. Understand it. I don't have answers, but I've been finding interesting things along the way.</p>
+
+      <h2>What I actually want</h2>
+
+      <p>The tool I keep imagining doesn't organize things into folders or categories. It lets you wander through everything you've saved by following trails of thought. One thing leads to another, the way your brain already works.</p>
+
+      <p>That tool doesn't exist yet. <mark>We can find things now. We still can't really think with our archives.</mark></p>
+
+      <h2>Two camps</h2>
+
+      <p>The approaches I've been reading about basically split into two camps.</p>
+
+      <p>One side says: put in the work upfront. Methods like <a href="https://zettelkasten.de/overview/" target="_blank" rel="noopener">Zettelkasten</a>, <a href="https://fortelabs.com/blog/para/" target="_blank" rel="noopener">PARA</a>, <a href="https://johnnydecimal.com/" target="_blank" rel="noopener">Johnny Decimal</a>. Each one has a system for how notes should be structured, tagged, connected. They're compelling when you read about them. The problem is that I've tried versions of this before. It works for about two weeks, which is how long any organizational system works before life takes over and things start piling up in the "Unsorted" folder again.</p>
+
+      <p>The other side says: forget organizing, just save everything and let AI figure it out later. Tools like <a href="https://fabric.so/" target="_blank" rel="noopener">Fabric</a> let you throw in links, notes, images, voice memos with zero structure, and promise that search will surface the right thing when you need it. I like the idea. I'm not sure I trust it across ten years of accumulated stuff.</p>
+
+      <p class="standalone">I keep wondering if there's something in between.</p>
+
+      <h2>What I'm actually using</h2>
+
+      <p>Right now my setup is a loose patchwork:</p>
+
+      <ul>
+        <li><a href="https://obsidian.md/" target="_blank" rel="noopener">Obsidian</a> for daily notes, project thinking, and linked ideas. Everything is just local Markdown files, which means I actually own them. The <a href="https://github.com/blacksmithgu/obsidian-dataview" target="_blank" rel="noopener">Dataview</a> plugin lets me query my notes like a database, which is surprisingly useful once you have a few years of material.</li>
+        <li><a href="https://readwise.io/" target="_blank" rel="noopener">Readwise</a> for pulling highlights from articles and books into Obsidian. It's the best bridge I've found between "things I read" and "things I actually think about later."</li>
+        <li><a href="https://www.are.na/" target="_blank" rel="noopener">Are.na</a> for visual collecting. No algorithms, no likes, no feeds. Just channels of images, links, and text that sit next to each other. I use it for design research and reference collecting, and sometimes connections show up just through things being near each other.</li>
+        <li><a href="https://claude.ai/" target="_blank" rel="noopener">Claude Code</a> for running analysis across my Obsidian vault. This is the newest addition and the most interesting one. I pointed it at years of notes and it surfaced patterns I hadn't noticed: the same questions showing up across projects years apart, ideas I kept abandoning and returning to.</li>
+      </ul>
+
+      <p>None of these talk to each other particularly well. The Readwise-to-Obsidian pipeline is smooth, but my Are.na channels and my Obsidian vault are separate worlds. I'm doing the stitching manually.</p>
+
+      <h2>Things I want to try</h2>
+
+      <p><a href="https://www.devontechnologies.com/apps/devonthink" target="_blank" rel="noopener">DEVONthink</a> just released version 4 with AI built in. People throw thousands of PDFs, receipts, research papers into it. Now it can have conversations with your documents, and everything runs locally on your machine. No cloud. I like that. If I'm going to let a tool see everything I've saved, I'd rather it not leave my laptop.</p>
+
+      <p><a href="https://www.usefenn.com/" target="_blank" rel="noopener">Fenn</a> is one I keep hearing about. It's a search engine for your Mac that indexes everything: scenes from videos, passages in PDFs, slides from decks, even words spoken in voice memos. It searches by meaning, not just keywords. People are pairing it with DEVONthink: one for the structured archive, the other for finding things across all of it.</p>
+
+      <p>Google's <a href="https://notebooklm.google.com/" target="_blank" rel="noopener">NotebookLM</a> has quietly gotten interesting. You upload documents and it builds a knowledge base you can have a conversation with. It even generates podcast-style audio about your material, which is a strange and kind of delightful feature. The limitation: it works per-notebook, not across your whole life.</p>
+
+      <p>And then there's the cautionary tale. <a href="https://www.limitless.ai/" target="_blank" rel="noopener">Limitless</a> (formerly Rewind) was building exactly the "record everything" personal AI: a wearable that captured conversations, generated summaries, made your digital life searchable. Then Meta acquired them in December, halted sales, and started shutting the app down.</p>
+
+      <h2>The thing I can't stop thinking about</h2>
+
+      <p>The search part is actually getting good. You can describe a vague memory and the right thing shows up. That works.</p>
+
+      <p>What I can't find is the layer above that. The difference between:</p>
+
+      <div class="prompt">Find that article about wayfinding I saved last year</div>
+
+      <p>and:</p>
+
+      <div class="prompt">What themes have I been circling for the past three years?</div>
+
+      <p>The first one is just search. The second one is something else entirely. <mark>The tools can find things. They can't yet help you see what your collection of things says about how you think.</mark></p>
+
+      <p>Running Claude Code against my vault was the closest I've gotten. It pulled up questions I keep returning to, tensions that showed up in project notes years apart. Not a finished experience, but enough to make me think there's something here.</p>
+
+      <p>Are.na might be the tool that gets closest to that idea, and it's the simplest one. You collect things deliberately. You don't force them into categories. They just sit next to each other and sometimes the proximity creates meaning. It's the most human approach, and the one that probably doesn't scale.</p>
+
+      <p>If there's a takeaway from all of this, it's that nobody has figured it out yet. The people who seem happiest with their archives use two or three tools, do some manual curation, and make sure they can export everything. That's about it. The Memex is still mostly imagined. But the pieces feel closer than they've ever been.</p>
+
+      <p>I'll keep experimenting. And I'll keep adding to the unsorted folder.</p>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="entry-footer">
+      <a href="entry-02.html" class="footer-prev"><span class="footer-arrow">&larr;</span> Previous<span class="footer-title">What happens to design systems when the code is the source of truth?</span></a>
+      <span></span>
+    </div>
+
+</div>
+
+<script>
+  // Theme toggle
+  const toggle = document.querySelector('.theme-toggle');
+  const label = toggle.querySelector('.toggle-label');
+  const icon = toggle.querySelector('.toggle-icon');
+  function updateToggleLabel() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    label.textContent = isDark ? 'light' : 'dark';
+    icon.textContent = isDark ? '☀' : '☾';
+  }
+  updateToggleLabel();
+  toggle.addEventListener('click', () => {
+    document.documentElement.classList.add('theme-transitioning');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const next = isDark ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+    updateToggleLabel();
+    setTimeout(() => document.documentElement.classList.remove('theme-transitioning'), 500);
+  });
+
+  // Listen / Player
+  const listenBtn = document.getElementById('listenBtn');
+  const listenLabel = document.getElementById('listenLabel');
+  const listenSvg = listenBtn.querySelector('.listen-svg');
+  const topPlayer = document.getElementById('topPlayer');
+  const topPauseBtn = document.getElementById('topPauseBtn');
+  const topPlayerLabel = document.getElementById('topPlayerLabel');
+  const topPlayerTime = document.getElementById('topPlayerTime');
+  const topSkipBack = document.getElementById('topSkipBack');
+  const topSkipFwd = document.getElementById('topSkipFwd');
+  const topSpeedBtns = document.querySelectorAll('.top-speed-btn');
+  const inlineControls = document.getElementById('inlineControls');
+  const playerElapsed = document.getElementById('playerElapsed');
+  const readTime = document.getElementById('readTime');
+  const skipBack = document.getElementById('skipBack');
+  const skipFwd = document.getElementById('skipFwd');
+  const speedBtns = document.querySelectorAll('.speed-btn');
+  let playing = false;
+  let started = false;
+  let elapsed = 0;
+  let duration = 9 * 60 + 24;
+  let speed = 1;
+  let interval;
+
+  const pauseSvg = '<rect x="1" y="0" width="3" height="10"/><rect x="6" y="0" width="3" height="10"/>';
+  const playSvg = '<polygon points="2,0 10,5 2,10"/>';
+
+  function formatTime(s) {
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function updateUI() {
+    const icon = playing ? pauseSvg : playSvg;
+    const label = playing ? 'Pause' : 'Play';
+    listenSvg.innerHTML = icon;
+    topPauseBtn.querySelector('svg').innerHTML = icon;
+    topPlayerLabel.textContent = label;
+    const t = formatTime(elapsed);
+    playerElapsed.textContent = t;
+    topPlayerTime.textContent = t;
+    if (playing) {
+      listenLabel.textContent = 'Pause';
+      readTime.style.display = 'none';
+      inlineControls.classList.add('active');
+      topPlayer.classList.add('active');
+    } else if (started) {
+      listenLabel.textContent = 'Play';
+      readTime.style.display = 'none';
+      inlineControls.classList.add('active');
+      topPlayer.classList.add('active');
+    } else {
+      listenLabel.textContent = 'Listen to entry';
+      readTime.style.display = '';
+      inlineControls.classList.remove('active');
+      topPlayer.classList.remove('active');
+    }
+  }
+
+  function startInterval() {
+    clearInterval(interval);
+    interval = setInterval(() => {
+      elapsed += speed;
+      if (elapsed >= duration) {
+        elapsed = 0;
+        playing = false;
+        started = false;
+        clearInterval(interval);
+      }
+      updateUI();
+    }, 1000);
+  }
+
+  function togglePlay() {
+    if (playing) {
+      clearInterval(interval);
+      playing = false;
+    } else {
+      playing = true;
+      started = true;
+      startInterval();
+    }
+    updateUI();
+  }
+
+  listenBtn.addEventListener('click', togglePlay);
+  topPauseBtn.addEventListener('click', togglePlay);
+
+  skipBack.addEventListener('click', () => {
+    elapsed = Math.max(0, elapsed - 10);
+    updateUI();
+  });
+
+  skipFwd.addEventListener('click', () => {
+    elapsed = Math.min(duration, elapsed + 10);
+    updateUI();
+  });
+
+  function setSpeed(s) {
+    speed = s;
+    speedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === s));
+    topSpeedBtns.forEach(b => b.classList.toggle('active', parseFloat(b.dataset.speed) === s));
+    document.getElementById('speedCycle').textContent = s + 'x';
+    document.getElementById('topSpeedCycle').textContent = s + 'x';
+    if (playing) startInterval();
+  }
+
+  speedBtns.forEach(btn => {
+    btn.addEventListener('click', () => setSpeed(parseFloat(btn.dataset.speed)));
+  });
+  topSpeedBtns.forEach(btn => {
+    btn.addEventListener('click', () => setSpeed(parseFloat(btn.dataset.speed)));
+  });
+
+  // Speed cycle buttons (mobile)
+  const speedCycle = document.getElementById('speedCycle');
+  const topSpeedCycle = document.getElementById('topSpeedCycle');
+  const speedOrder = [1, 1.5, 2, 0.5];
+  function cycleSpeed() {
+    const idx = speedOrder.indexOf(speed);
+    const next = speedOrder[(idx + 1) % speedOrder.length];
+    setSpeed(next);
+    speedCycle.textContent = next + 'x';
+    topSpeedCycle.textContent = next + 'x';
+  }
+  speedCycle.addEventListener('click', cycleSpeed);
+  topSpeedCycle.addEventListener('click', cycleSpeed);
+
+  topSkipBack.addEventListener('click', () => {
+    elapsed = Math.max(0, elapsed - 10);
+    updateUI();
+  });
+  topSkipFwd.addEventListener('click', () => {
+    elapsed = Math.min(duration, elapsed + 10);
+    updateUI();
+  });
+
+  // Copy URL button
+  const copyBtn = document.getElementById('copyBtn');
+  const copyLabel = copyBtn.querySelector('.copy-label');
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(window.location.href);
+    copyLabel.textContent = 'Copied!';
+    setTimeout(() => copyLabel.textContent = 'Copy URL', 2000);
+  });
+
+  // Top bar fade on scroll + progress bar
+  const topBar = document.querySelector('.top-bar');
+  const progressBar = document.querySelector('.progress-bar');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 80) {
+      topBar.classList.add('visible');
+    } else {
+      topBar.classList.remove('visible');
+    }
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = (window.scrollY / docHeight) * 100;
+    progressBar.style.width = progress + '%';
+  });
+
+  // Dot grid parallax
+  const grid = document.querySelector('.dot-grid');
+  let ticking = false;
+  document.addEventListener('mousemove', (e) => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 12;
+        const y = (e.clientY / window.innerHeight - 0.5) * 12;
+        grid.style.transform = `translate(${x}px, ${y}px)`;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+
+  // Scroll reveal
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.article-body > *').forEach(el => revealObserver.observe(el));
+
+  // Keyboard nav between entries
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    var prev = document.querySelector('.footer-prev');
+    var next = document.querySelector('.footer-next');
+    if (e.key === 'ArrowLeft' && prev) window.location.href = prev.href;
+    if (e.key === 'ArrowRight' && next) window.location.href = next.href;
+  });
+
+  // Back to top
+  var backToTop = document.getElementById('backToTop');
+  backToTop.addEventListener('click', function() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  window.addEventListener('scroll', function() {
+    if (window.scrollY < 200) {
+      backToTop.classList.remove('visible');
+    } else {
+      backToTop.classList.add('visible');
+    }
+  });
+</script>
+</body>
+</html>
